@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>CloudBase Release Lab</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f6f2;
+      --panel: #ffffff;
+      --ink: #111315;
+      --muted: #66706a;
+      --line: #d9ddd8;
+      --green: #16a34a;
+      --green-soft: #e7f6ec;
+      --amber: #c77900;
+      --red: #c63c3c;
+      --red-soft: #faeceb;
+      --rail: #181c1a;
+      --rail-muted: #aab4ae;
+      --radius: 8px;
+      --font-sans: "Avenir Next", "PingFang SC", sans-serif;
+      --font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg);
+      font-family: var(--font-sans);
+      letter-spacing: 0;
+    }
+
+    button {
+      font: inherit;
+      letter-spacing: 0;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .status-rail {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 100vh;
+      padding: 32px 28px;
+      color: #f5f6f2;
+      background: var(--rail);
+    }
+
+    .eyebrow {
+      margin: 0 0 28px;
+      color: var(--rail-muted);
+      font: 600 12px/18px var(--font-mono);
+      text-transform: uppercase;
+    }
+
+    .service-name {
+      max-width: 220px;
+      margin: 0;
+      font-size: 30px;
+      line-height: 36px;
+      font-weight: 600;
+    }
+
+    .version-block {
+      margin-top: 40px;
+      padding-top: 18px;
+      border-top: 1px solid #39413d;
+    }
+
+    .meta-label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--rail-muted);
+      font: 500 12px/18px var(--font-mono);
+    }
+
+    .version-value {
+      display: block;
+      min-height: 40px;
+      font: 600 28px/40px var(--font-mono);
+    }
+
+    .rail-status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+      color: var(--rail-muted);
+      font: 500 13px/20px var(--font-mono);
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      flex: 0 0 10px;
+      border-radius: 50%;
+      background: var(--amber);
+    }
+
+    .status-dot[data-state="ok"] {
+      background: var(--green);
+    }
+
+    .status-dot[data-state="error"] {
+      background: var(--red);
+    }
+
+    .rail-footer {
+      color: var(--rail-muted);
+      font: 500 12px/18px var(--font-mono);
+    }
+
+    .workspace {
+      width: min(100%, 1120px);
+      padding: 48px clamp(24px, 5vw, 72px);
+    }
+
+    .workspace-header {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .workspace-title {
+      margin: 0;
+      font-size: 26px;
+      line-height: 34px;
+      font-weight: 600;
+    }
+
+    .workspace-subtitle {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 22px;
+    }
+
+    .clock {
+      color: var(--muted);
+      font: 500 13px/20px var(--font-mono);
+      white-space: nowrap;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 24px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .action-button {
+      min-height: 40px;
+      padding: 0 16px;
+      color: var(--ink);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
+    }
+
+    .action-button:hover,
+    .action-button:focus-visible {
+      border-color: var(--green);
+      outline: none;
+    }
+
+    .action-button:disabled {
+      cursor: wait;
+      opacity: 0.58;
+    }
+
+    .action-button[data-tone="danger"] {
+      color: var(--red);
+      border-color: #e7b9b5;
+    }
+
+    .action-button[data-tone="danger"]:hover,
+    .action-button[data-tone="danger"]:focus-visible {
+      color: #ffffff;
+      background: var(--red);
+      border-color: var(--red);
+    }
+
+    .result-section {
+      padding: 28px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 16px;
+      line-height: 24px;
+      font-weight: 600;
+    }
+
+    .result-state {
+      padding: 4px 9px;
+      color: var(--muted);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      font: 600 12px/18px var(--font-mono);
+    }
+
+    .result-state[data-state="ok"] {
+      color: var(--green);
+      border-color: #9ed7b2;
+      background: var(--green-soft);
+    }
+
+    .result-state[data-state="error"] {
+      color: var(--red);
+      border-color: #e7b9b5;
+      background: var(--red-soft);
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+    }
+
+    .metric {
+      min-width: 0;
+      padding: 16px;
+    }
+
+    .metric + .metric {
+      border-left: 1px solid var(--line);
+    }
+
+    .metric-label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 18px;
+    }
+
+    .metric-value {
+      display: block;
+      min-height: 24px;
+      margin-top: 6px;
+      overflow-wrap: anywhere;
+      font: 600 13px/20px var(--font-mono);
+    }
+
+    .response-output {
+      min-height: 170px;
+      max-height: 320px;
+      margin: 16px 0 0;
+      padding: 18px;
+      overflow: auto;
+      color: #dce4df;
+      background: #111513;
+      border: 1px solid #2e3732;
+      border-radius: var(--radius);
+      font: 500 13px/21px var(--font-mono);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .endpoint-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--panel);
+      border: 1px solid var(--line);
+    }
+
+    .endpoint-table th,
+    .endpoint-table td {
+      padding: 13px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      font-size: 13px;
+      line-height: 20px;
+    }
+
+    .endpoint-table tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .endpoint-table th {
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .endpoint-table code {
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
+
+    @media (max-width: 760px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      .status-rail {
+        min-height: auto;
+        padding: 24px;
+      }
+
+      .service-name {
+        max-width: none;
+        font-size: 24px;
+        line-height: 32px;
+      }
+
+      .version-block {
+        margin-top: 24px;
+      }
+
+      .rail-footer {
+        margin-top: 24px;
+      }
+
+      .workspace {
+        padding: 32px 20px 48px;
+      }
+
+      .workspace-header {
+        align-items: start;
+        flex-direction: column;
+      }
+
+      .metrics {
+        grid-template-columns: 1fr;
+      }
+
+      .metric + .metric {
+        border-top: 1px solid var(--line);
+        border-left: 0;
+      }
+
+      .endpoint-table th:nth-child(3),
+      .endpoint-table td:nth-child(3) {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <aside class="status-rail" aria-label="服务状态">
+      <div>
+        <p class="eyebrow">CloudBase Release Lab</p>
+        <h1 class="service-name">Node 云托管实验服务</h1>
+        <div class="version-block">
+          <span class="meta-label">当前版本</span>
+          <strong class="version-value" id="versionValue">读取中</strong>
+          <div class="rail-status">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="serviceStatus">正在连接</span>
+          </div>
+        </div>
+      </div>
+      <div class="rail-footer">Container mode · Port 80</div>
+    </aside>
+
+    <section class="workspace">
+      <header class="workspace-header">
+        <div>
+          <h2 class="workspace-title">运行验证</h2>
+          <p class="workspace-subtitle">页面和 API 使用同一个云托管版本与访问域名。</p>
+        </div>
+        <time class="clock" id="clock"></time>
+      </header>
+
+      <nav class="actions" aria-label="验证操作">
+        <button class="action-button" id="healthButton" type="button">检查健康</button>
+        <button class="action-button" id="ipButton" type="button">查询出口 IP</button>
+        <button class="action-button" data-tone="danger" id="errorButton" type="button">触发测试错误</button>
+      </nav>
+
+      <section class="result-section" aria-labelledby="responseTitle">
+        <div class="section-heading">
+          <h3 class="section-title" id="responseTitle">最近响应</h3>
+          <span class="result-state" id="resultState">等待</span>
+        </div>
+        <div class="metrics">
+          <div class="metric">
+            <span class="metric-label">HTTP 状态</span>
+            <strong class="metric-value" id="statusValue">-</strong>
+          </div>
+          <div class="metric">
+            <span class="metric-label">响应耗时</span>
+            <strong class="metric-value" id="durationValue">-</strong>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Request ID</span>
+            <strong class="metric-value" id="requestIdValue">-</strong>
+          </div>
+        </div>
+        <pre class="response-output" id="responseOutput" aria-live="polite">等待请求</pre>
+      </section>
+
+      <section class="result-section" aria-labelledby="endpointTitle">
+        <div class="section-heading">
+          <h3 class="section-title" id="endpointTitle">实验接口</h3>
+        </div>
+        <table class="endpoint-table">
+          <thead>
+            <tr>
+              <th>方法</th>
+              <th>路径</th>
+              <th>预期</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>GET</td>
+              <td><code>/api/version</code></td>
+              <td>版本与请求标识</td>
+            </tr>
+            <tr>
+              <td>GET</td>
+              <td><code>/healthz</code></td>
+              <td>HTTP 200</td>
+            </tr>
+            <tr>
+              <td>POST</td>
+              <td><code>/api/test-error</code></td>
+              <td>受控 HTTP 500</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const elements = {
+      buttons: Array.from(document.querySelectorAll('.action-button')),
+      clock: document.querySelector('#clock'),
+      duration: document.querySelector('#durationValue'),
+      errorButton: document.querySelector('#errorButton'),
+      healthButton: document.querySelector('#healthButton'),
+      ipButton: document.querySelector('#ipButton'),
+      output: document.querySelector('#responseOutput'),
+      requestId: document.querySelector('#requestIdValue'),
+      resultState: document.querySelector('#resultState'),
+      serviceStatus: document.querySelector('#serviceStatus'),
+      status: document.querySelector('#statusValue'),
+      statusDot: document.querySelector('#statusDot'),
+      version: document.querySelector('#versionValue')
+    };
+
+    function setBusy(isBusy) {
+      elements.buttons.forEach((button) => {
+        button.disabled = isBusy;
+      });
+    }
+
+    function setServiceState(state, label) {
+      elements.statusDot.dataset.state = state;
+      elements.serviceStatus.textContent = label;
+    }
+
+    function updateClock() {
+      elements.clock.textContent = new Intl.DateTimeFormat('zh-CN', {
+        dateStyle: 'medium',
+        timeStyle: 'medium'
+      }).format(new Date());
+    }
+
+    async function runRequest(path, options = {}) {
+      setBusy(true);
+      elements.resultState.dataset.state = '';
+      elements.resultState.textContent = '请求中';
+      const startedAt = performance.now();
+
+      try {
+        const response = await fetch(path, options);
+        const durationMs = Math.round(performance.now() - startedAt);
+        const payload = await response.json();
+        const requestId = response.headers.get('x-request-id') || payload.requestId || '-';
+        const isExpectedError = path === '/api/test-error' && response.status === 500;
+
+        elements.status.textContent = String(response.status);
+        elements.duration.textContent = `${durationMs} ms`;
+        elements.requestId.textContent = requestId;
+        elements.output.textContent = JSON.stringify(payload, null, 2);
+        elements.resultState.dataset.state = response.ok ? 'ok' : 'error';
+        elements.resultState.textContent = response.ok
+          ? '正常'
+          : (isExpectedError ? '预期错误' : '异常');
+
+        if (typeof payload.version === 'string') {
+          elements.version.textContent = payload.version;
+        }
+
+        if (response.ok || isExpectedError) {
+          setServiceState('ok', '服务可用');
+        } else {
+          setServiceState('error', '服务异常');
+        }
+
+        return payload;
+      } catch (error) {
+        elements.status.textContent = '网络错误';
+        elements.duration.textContent = '-';
+        elements.requestId.textContent = '-';
+        elements.output.textContent = error instanceof Error ? error.message : '请求失败';
+        elements.resultState.dataset.state = 'error';
+        elements.resultState.textContent = '异常';
+        setServiceState('error', '连接失败');
+        return null;
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    elements.healthButton.addEventListener('click', () => {
+      runRequest('/healthz');
+    });
+
+    elements.ipButton.addEventListener('click', () => {
+      runRequest('/myip');
+    });
+
+    elements.errorButton.addEventListener('click', () => {
+      runRequest('/api/test-error', {
+        method: 'POST',
+        headers: {
+          'X-Lab-Action': 'intentional-error'
+        }
+      });
+    });
+
+    updateClock();
+    setInterval(updateClock, 1000);
+    runRequest('/api/version');
+  </script>
+</body>
+</html>
